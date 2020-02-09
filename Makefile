@@ -34,6 +34,10 @@ all: cisplit
 clean:
 	rm -f cisplit cisplit.o
 
+.PHONY: check
+check: cisplit
+	prove ./test.pl
+
 cisplit: cisplit.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
