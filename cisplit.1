@@ -1,0 +1,60 @@
+.TH CISPLIT 1
+.SH NAME
+cisplit \- Split a file into content-identifiable chunks
+.SH SYNOPSIS
+.B cisplit
+[options] <\fIinput file or block device\fR> <\fIoutput directory\fR> <\fIchunk size\fR>
+.SH DESCRIPTION
+.B cisplit
+reads data from an input file and writes it in chunks to an output directory.
+
+The chunk size is specified in bytes and may have a 'k' or 'M' suffix to signal
+kibibytes (1024 bytes) or mebibytes (1024 ^ 2 bytes).
+
+The checksum of each chunk is included in the filename to facilitate efficient
+mirroring of chunks. Files are ordered by their name and rely on no external
+index so they may be restored without any special software.
+
+Backing up a device to a directory:
+
+# cisplit /dev/XXX /mnt/backup/
+
+Restoring the backup:
+
+# for f in /mnt/backup/chunk.*; do cat "$f"; done > /dev/XXX
+
+.SH OPTIONS
+.TP
+.BR \-d
+Delete any existing regular files in output directory which would not have been created by cisplit.
+.TP
+.BR \-s
+Skip writing files that already exist in output directory (based on filename).
+.TP
+.BR \-v
+List files created/skipped/deleted.
+.TP
+.BR \-z
+Compress individual output files using gzip.
+.TP
+.BR \-0..9
+Set gzip compression level.
+
+.SH EXIT STATUS
+.TP
+.BR 0
+Successfuly wrote all chunks to output directory.
+.TP
+.BR 64 (EX_USAGE)
+Command line usage error.
+.TP
+.BR 66 (EX_NOINPUT)
+Error opening or reading from input file.
+.TP
+.BR 73 (EX_CANTCREAT)
+Error writing to output directory.
+.TP
+.BR 71 (EX_OSERR)
+Other error (e.g. out of memory).
+.SH AUTHOR
+Daniel Collins <solemnwarning@solemnwarning.net>

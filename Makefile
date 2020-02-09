@@ -14,6 +14,13 @@
 # this program; if not, write to the Free Software Foundation, Inc., 51
 # Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+prefix      ?= /usr/local
+exec_prefix ?= $(prefix)
+bindir      ?= $(exec_prefix)/bin
+datarootdir ?= $(prefix)/share
+mandir      ?= $(datarootdir)/man
+man1dir     ?= $(mandir)/man1
+
 # Wrapper around the $(shell) function that aborts the build if the command
 # exits with a nonzero status.
 shell-or-die = \
@@ -38,8 +45,26 @@ clean:
 check: cisplit
 	prove ./test.pl
 
+.PHONY: install
+install: cisplit cisplit.1.gz
+	install -D -m 0755 cisplit $(DESTDIR)$(bindir)/cisplit
+	install -D -m 0644 cisplit.1.gz $(DESTDIR)$(man1dir)/cisplit.1.gz
+
+.PHONY: install-strip
+install-strip: cisplit cisplit.1.gz
+	install -D -m 0755 -s cisplit $(DESTDIR)$(bindir)/cisplit
+	install -D -m 0644 cisplit.1.gz $(DESTDIR)$(man1dir)/cisplit.1.gz
+
+.PHONY: uninstall
+uninstall:
+	rm -f $(DESTDIR)$(man1dir)/cisplit.1.gz
+	rm -f $(DESTDIR)$(bindir)/cisplit
+
 cisplit: cisplit.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
 cisplit.o: cisplit.c
 	$(CC) $(CFLAGS) -c -o $@ $<
+
+cisplit.1.gz: cisplit.1
+	gzip -fk cisplit.1
