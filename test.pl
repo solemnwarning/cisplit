@@ -20,6 +20,7 @@ use warnings;
 
 use Digest::file qw(digest_file_hex);
 use Fcntl qw(SEEK_SET);
+use File::stat;
 use File::Temp;
 use Test::Spec;
 
@@ -137,6 +138,100 @@ describe "cisplit" => sub
 		is(digest_file_hex("$dir/chunk.aaaaab.ec8818b0083ea0f5d4bf5f1a24068c92dbef175dbc908ee32686611b414d58bb", "SHA-1"), "65127fae619c3181834a6754fa02af039978c8fe");
 		is(digest_file_hex("$dir/chunk.aaaaac.edad3f8964aefe5c2db0119ae9994c8ef6b98813dd03a3364a4e735dca4c0ade", "SHA-1"), "fda934d59f5d95183387793082afd568b75b3ecd");
 		is(digest_file_hex("$dir/chunk.aaaaad.538ed1ce80dfde8dc9a1d4c071753a4defb9bf8f77196e571b20ca92996c67f9", "SHA-1"), "1e770a0987379895955e2e5f948fbcdb0c9fc1f5");
+		
+		# Old files
+		ok(! -e "$dir/chunk.aaaaab.69f27d6652d95fc4b88773b8062281ba9bdd0353f3d6c16383412bee9c336c06");
+		ok(! -e "$dir/chunk.aaaaac.a540a008c0aa63d5de7839947fbbff027530ddf9767a1516495e3bb1a1a6d823");
+	};
+	
+	it "overwrites existing files by default" => sub
+	{
+		write_rand("$file", 0, SEED_1, 4096);
+		
+		cisplit("$file", "$dir", "1024");
+		
+		is(digest_file_hex("$dir/chunk.aaaaaa.f4f182a2b1bc569ec5b2166ac550a61e8539ed60bf3a0efd1c3c1d0961b5e09a", "SHA-1"), "393c2468edd206dddb1084961cec6d88a6459643");
+		is(digest_file_hex("$dir/chunk.aaaaab.69f27d6652d95fc4b88773b8062281ba9bdd0353f3d6c16383412bee9c336c06", "SHA-1"), "2c30db27562c52df483134cf7d5c70c5a7bd7e81");
+		is(digest_file_hex("$dir/chunk.aaaaac.a540a008c0aa63d5de7839947fbbff027530ddf9767a1516495e3bb1a1a6d823", "SHA-1"), "5afab69251e3ac8d93936eeea9539bab333ece17");
+		is(digest_file_hex("$dir/chunk.aaaaad.538ed1ce80dfde8dc9a1d4c071753a4defb9bf8f77196e571b20ca92996c67f9", "SHA-1"), "1e770a0987379895955e2e5f948fbcdb0c9fc1f5");
+		
+		# Change some of the file
+		write_rand("$file", 1536, SEED_2, 1024);
+		
+		my $old_i1 = stat("$dir/chunk.aaaaaa.f4f182a2b1bc569ec5b2166ac550a61e8539ed60bf3a0efd1c3c1d0961b5e09a")->ino();
+		my $old_i4 = stat("$dir/chunk.aaaaad.538ed1ce80dfde8dc9a1d4c071753a4defb9bf8f77196e571b20ca92996c67f9")->ino();
+		
+		cisplit("$file", "$dir", "1024");
+		
+		# New files
+		is(digest_file_hex("$dir/chunk.aaaaaa.f4f182a2b1bc569ec5b2166ac550a61e8539ed60bf3a0efd1c3c1d0961b5e09a", "SHA-1"), "393c2468edd206dddb1084961cec6d88a6459643");
+		is(digest_file_hex("$dir/chunk.aaaaab.ec8818b0083ea0f5d4bf5f1a24068c92dbef175dbc908ee32686611b414d58bb", "SHA-1"), "65127fae619c3181834a6754fa02af039978c8fe");
+		is(digest_file_hex("$dir/chunk.aaaaac.edad3f8964aefe5c2db0119ae9994c8ef6b98813dd03a3364a4e735dca4c0ade", "SHA-1"), "fda934d59f5d95183387793082afd568b75b3ecd");
+		is(digest_file_hex("$dir/chunk.aaaaad.538ed1ce80dfde8dc9a1d4c071753a4defb9bf8f77196e571b20ca92996c67f9", "SHA-1"), "1e770a0987379895955e2e5f948fbcdb0c9fc1f5");
+		
+		# Overwritten files (replaced, new inode number)
+		isnt(stat("$dir/chunk.aaaaaa.f4f182a2b1bc569ec5b2166ac550a61e8539ed60bf3a0efd1c3c1d0961b5e09a")->ino(), $old_i1);
+		isnt(stat("$dir/chunk.aaaaad.538ed1ce80dfde8dc9a1d4c071753a4defb9bf8f77196e571b20ca92996c67f9")->ino(), $old_i4);
+	};
+	
+	it "skips existing files if -s is specified" => sub
+	{
+		write_rand("$file", 0, SEED_1, 4096);
+		
+		cisplit("$file", "$dir", "1024");
+		
+		is(digest_file_hex("$dir/chunk.aaaaaa.f4f182a2b1bc569ec5b2166ac550a61e8539ed60bf3a0efd1c3c1d0961b5e09a", "SHA-1"), "393c2468edd206dddb1084961cec6d88a6459643");
+		is(digest_file_hex("$dir/chunk.aaaaab.69f27d6652d95fc4b88773b8062281ba9bdd0353f3d6c16383412bee9c336c06", "SHA-1"), "2c30db27562c52df483134cf7d5c70c5a7bd7e81");
+		is(digest_file_hex("$dir/chunk.aaaaac.a540a008c0aa63d5de7839947fbbff027530ddf9767a1516495e3bb1a1a6d823", "SHA-1"), "5afab69251e3ac8d93936eeea9539bab333ece17");
+		is(digest_file_hex("$dir/chunk.aaaaad.538ed1ce80dfde8dc9a1d4c071753a4defb9bf8f77196e571b20ca92996c67f9", "SHA-1"), "1e770a0987379895955e2e5f948fbcdb0c9fc1f5");
+		
+		# Change some of the file
+		write_rand("$file", 1536, SEED_2, 1024);
+		
+		my $old_i1 = stat("$dir/chunk.aaaaaa.f4f182a2b1bc569ec5b2166ac550a61e8539ed60bf3a0efd1c3c1d0961b5e09a")->ino();
+		my $old_i4 = stat("$dir/chunk.aaaaad.538ed1ce80dfde8dc9a1d4c071753a4defb9bf8f77196e571b20ca92996c67f9")->ino();
+		
+		cisplit("-s", "$file", "$dir", "1024");
+		
+		# New files
+		is(digest_file_hex("$dir/chunk.aaaaaa.f4f182a2b1bc569ec5b2166ac550a61e8539ed60bf3a0efd1c3c1d0961b5e09a", "SHA-1"), "393c2468edd206dddb1084961cec6d88a6459643");
+		is(digest_file_hex("$dir/chunk.aaaaab.ec8818b0083ea0f5d4bf5f1a24068c92dbef175dbc908ee32686611b414d58bb", "SHA-1"), "65127fae619c3181834a6754fa02af039978c8fe");
+		is(digest_file_hex("$dir/chunk.aaaaac.edad3f8964aefe5c2db0119ae9994c8ef6b98813dd03a3364a4e735dca4c0ade", "SHA-1"), "fda934d59f5d95183387793082afd568b75b3ecd");
+		is(digest_file_hex("$dir/chunk.aaaaad.538ed1ce80dfde8dc9a1d4c071753a4defb9bf8f77196e571b20ca92996c67f9", "SHA-1"), "1e770a0987379895955e2e5f948fbcdb0c9fc1f5");
+		
+		# Skipped files (same inode number)
+		is(stat("$dir/chunk.aaaaaa.f4f182a2b1bc569ec5b2166ac550a61e8539ed60bf3a0efd1c3c1d0961b5e09a")->ino(), $old_i1);
+		is(stat("$dir/chunk.aaaaad.538ed1ce80dfde8dc9a1d4c071753a4defb9bf8f77196e571b20ca92996c67f9")->ino(), $old_i4);
+	};
+	
+	it "doesn't delete skipped files if -ds is specified" => sub
+	{
+		write_rand("$file", 0, SEED_1, 4096);
+		
+		cisplit("$file", "$dir", "1024");
+		
+		is(digest_file_hex("$dir/chunk.aaaaaa.f4f182a2b1bc569ec5b2166ac550a61e8539ed60bf3a0efd1c3c1d0961b5e09a", "SHA-1"), "393c2468edd206dddb1084961cec6d88a6459643");
+		is(digest_file_hex("$dir/chunk.aaaaab.69f27d6652d95fc4b88773b8062281ba9bdd0353f3d6c16383412bee9c336c06", "SHA-1"), "2c30db27562c52df483134cf7d5c70c5a7bd7e81");
+		is(digest_file_hex("$dir/chunk.aaaaac.a540a008c0aa63d5de7839947fbbff027530ddf9767a1516495e3bb1a1a6d823", "SHA-1"), "5afab69251e3ac8d93936eeea9539bab333ece17");
+		is(digest_file_hex("$dir/chunk.aaaaad.538ed1ce80dfde8dc9a1d4c071753a4defb9bf8f77196e571b20ca92996c67f9", "SHA-1"), "1e770a0987379895955e2e5f948fbcdb0c9fc1f5");
+		
+		# Change some of the file
+		write_rand("$file", 1536, SEED_2, 1024);
+		
+		my $old_i1 = stat("$dir/chunk.aaaaaa.f4f182a2b1bc569ec5b2166ac550a61e8539ed60bf3a0efd1c3c1d0961b5e09a")->ino();
+		my $old_i4 = stat("$dir/chunk.aaaaad.538ed1ce80dfde8dc9a1d4c071753a4defb9bf8f77196e571b20ca92996c67f9")->ino();
+		
+		cisplit("-ds", "$file", "$dir", "1024");
+		
+		# New files
+		is(digest_file_hex("$dir/chunk.aaaaaa.f4f182a2b1bc569ec5b2166ac550a61e8539ed60bf3a0efd1c3c1d0961b5e09a", "SHA-1"), "393c2468edd206dddb1084961cec6d88a6459643");
+		is(digest_file_hex("$dir/chunk.aaaaab.ec8818b0083ea0f5d4bf5f1a24068c92dbef175dbc908ee32686611b414d58bb", "SHA-1"), "65127fae619c3181834a6754fa02af039978c8fe");
+		is(digest_file_hex("$dir/chunk.aaaaac.edad3f8964aefe5c2db0119ae9994c8ef6b98813dd03a3364a4e735dca4c0ade", "SHA-1"), "fda934d59f5d95183387793082afd568b75b3ecd");
+		is(digest_file_hex("$dir/chunk.aaaaad.538ed1ce80dfde8dc9a1d4c071753a4defb9bf8f77196e571b20ca92996c67f9", "SHA-1"), "1e770a0987379895955e2e5f948fbcdb0c9fc1f5");
+		
+		# Skipped files (same inode number)
+		is(stat("$dir/chunk.aaaaaa.f4f182a2b1bc569ec5b2166ac550a61e8539ed60bf3a0efd1c3c1d0961b5e09a")->ino(), $old_i1);
+		is(stat("$dir/chunk.aaaaad.538ed1ce80dfde8dc9a1d4c071753a4defb9bf8f77196e571b20ca92996c67f9")->ino(), $old_i4);
 		
 		# Old files
 		ok(! -e "$dir/chunk.aaaaab.69f27d6652d95fc4b88773b8062281ba9bdd0353f3d6c16383412bee9c336c06");
