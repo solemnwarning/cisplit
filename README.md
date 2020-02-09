@@ -29,16 +29,16 @@ You will need OpenSSL and zlib installed (including development packages).
 
 Dumping and restoring a disk:
 
-    # cisplit /dev/XXX /mnt/backup/
+    # cisplit /dev/XXX /mnt/backup/ 16M
     # for f in /mnt/backup/chunk.*; do cat "$f"; done > /dev/XXX
 
 Dumping, compressing and restoring a disk:
 
-    # cisplit -z /dev/XXX /mnt/backup/
+    # cisplit -z /dev/XXX /mnt/backup/ 16M
     # for f in /mnt/backup/chunk.*; do zcat "$f"; done > /dev/XXX
 
 Updating an existing backup:
 
-    # cisplit -zsd /dev/XXX /mnt/backup/
+    # cisplit -zsd /dev/XXX /mnt/backup/ 16M
 
 For more details, read the `man` page.
