@@ -301,7 +301,7 @@ int main(int argc, char **argv)
 				 * Write buffer to output file.
 				*/
 				
-				if(fwrite(in_buf, last_read, 1, out) != 1)
+				if(fwrite(in_buf, in_len, 1, out) != 1)
 				{
 					fprintf(stderr, "Cannot write to %s: %s\n", tmp_name, strerror(errno));
 					
